@@ -671,7 +671,7 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
 
     if(!wglMakeCurrent(window->dc, window->glrc)) {
         GFX_RETURN(GFX_FAILED_TO_MAKE_CONTEXT_CURRENT);
-    } printf("Make Context Current: %d\n", GetLastError());
+    }
 
     // Set up debug logging
 	int flags;
@@ -722,7 +722,6 @@ void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback) {
 GLuint gfx_create_shader(const char* VertexSource, const char* FragmentSource) {
 	int success;
 	char log[512];
-    printf("log def\n");
 
 	// Read shader sources, create handles
 	const char* VertexString   = read_file(VertexSource);
@@ -875,7 +874,6 @@ static char* read_file(const char* path) {
     LARGE_INTEGER file_size; file_size.QuadPart = 0;
     GetFileSizeEx(fp, &file_size);
 	char* res = malloc(file_size.QuadPart + 1);
-    printf("%I64d\n", file_size.QuadPart);
     if(!res) {
 		fprintf(stderr, "[shader.c] malloc failed, %s\n", strerror(errno));
 		ExitProcess(-1);

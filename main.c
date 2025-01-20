@@ -28,7 +28,7 @@ int main() {
     }
 
     /* Create main window */
-    if(gfx_create_window(&window, 512, 512, "[GFX]") != GFX_SUCCESS) {
+    if(gfx_create_window(&window, 1280, 720, "[GFX]") != GFX_SUCCESS) {
         printf("Failed to create window, %d\n", gfx_get_last_error());
         return -1;
     }
@@ -47,10 +47,15 @@ int main() {
     glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
 
     /* Triangle */
+    //float verts[] = {
+    //    -0.5f, -0.5f, 0.0f,
+    //     0.5f, -0.5f, 0.0f,
+    //     0.0f,  0.5f, 0.0f
+    //};
     float verts[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
+        -1.0f, -1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+         0.0f,  1.0f, 0.0f
     };
 
     unsigned int indices[] = {
