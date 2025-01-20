@@ -355,10 +355,15 @@ int gfx_create_opengl_context(gfx_window* window) {
         0
     };
 
+    /* 
+    For some reason, on my main machine with the rx 6750 xt, this call to wglCreateContextAttribsARB
+    causes GetLastError() to return 126, and the subsequent SwapBuffers call causes GetLastError() to
+    generate 6. However, on a laptop with an nvidia gpu neither codes are generated. It seems to work
+    just fine on both computers however so idk. */
     window->gl_context = wglCreateContextAttribsARB(window->dc, 0, context_attribute_list);
     if(!window->gl_context) {
         return GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB;
-    } printf("Context: %d\n", GetLastError());
+    } //printf("Context: %d\n", GetLastError());
 
     if(!wglMakeCurrent(window->dc, window->gl_context)) {
         return GFX_FAILED_TO_MAKE_CONTEXT_CURRENT;
