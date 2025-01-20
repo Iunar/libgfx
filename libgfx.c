@@ -1,14 +1,17 @@
 #include "libgfx.h"
-#include "libgfx_defs.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 #include <windows.h>
+#include <stdio.h>
 
 #include <gl/gl.h>
 #include "glcorearb.h"
 #include "wglext.h"
+
+PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
+
 
 #define internal static
 
@@ -22,6 +25,8 @@ PFNWGLSWAPINTERVALEXTPROC               wglSwapIntervalEXT = NULL;
 int check_wgl_proc(void* proc);
 
 GFX_KEY_CALLBACK user_key_callback = NULL;
+void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsigned int id, GLenum severity,
+    GLsizei length, const char *message, const void *userParam);
 
 LRESULT gfx_def_winproc(
   HWND window,
@@ -244,7 +249,6 @@ int gfx_load_wgl_extensions() {
     }
 
     /* Clean up */
-
     // TODO: Maybe add error checking
     wglMakeCurrent(dummy_context, 0);
 
@@ -317,8 +321,17 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     return GFX_SUCCESS;
 }
 
+/* Close the window and free resources. Doesn't guarentee that any of the resources are successfully freed */
+void gfx_destroy_window(gfx_window* window) {
+    wglMakeCurrent(window->dc, 0);
+    wglDeleteContext(window->glrc);
+    ReleaseDC(window->handle, window->dc);
+    DestroyWindow(window->handle);
+    UnregisterClassA(window->class.lpszClassName, window->class.hInstance);
+}
+
 /* Set pixel format and create opengl context */
-int gfx_create_opengl_context(gfx_window* window) {
+int gfx_create_opengl_context(gfx_window* window, int context_version) {
     /* Set pixel format */
     const int pixel_attribute_list[] = { // TMP
         WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
@@ -345,29 +358,323 @@ int gfx_create_opengl_context(gfx_window* window) {
 
     if(!SetPixelFormat(window->dc, pixel_format, &format_description)) {
         return GFX_FAILED_TO_SET_PIXEL_FORMAT;
-    } printf("SetPixelFormat: %d\n", GetLastError());
+    }
 
     /* Create Context */
-    const int context_attribute_list[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 6,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-        0
-    };
+    /*
+        Please note that if the extension 'WGL_ARB_create_context_profile' is present, implementations
+        are allowed to return gl versions 3.0+ even if not directly asked for as long as the returned version
+        has the desired functionality from the requested version. For example, asking for version 3.0 and
+        receiving version 4.6 with the compatability profile.
+    */
+    // Build context attribute list from context_version
+    int context_attribute_list[9];
+    switch (context_version) {
+        case GFX_OPENGL_CORE_3_0: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 0;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_3_1: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 1;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_3_2: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 2;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_3_3: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_0: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 0;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_1: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 1;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_2: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 2;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_3: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_4: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 4;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_5: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 5;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_6: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 6;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+
+        case GFX_OPENGL_COMPATIBILITY_3_2: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 2;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_3_3: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 3;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_0: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 0;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_1: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 1;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_2: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 2;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_3: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_4: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 4;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_5: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 5;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_6: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 6;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_3_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_4_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 4;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_5_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 5;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_CORE_4_6_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 6;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_3_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 3;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_4_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 4;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_5_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 5;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        case GFX_OPENGL_COMPATIBILITY_4_6_DEBUG: {
+            context_attribute_list[0] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+            context_attribute_list[1] = 4;
+            context_attribute_list[2] = WGL_CONTEXT_MINOR_VERSION_ARB;
+            context_attribute_list[3] = 6;
+            context_attribute_list[4] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            context_attribute_list[5] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+            context_attribute_list[6] = WGL_CONTEXT_FLAGS_ARB;
+            context_attribute_list[7] = WGL_CONTEXT_DEBUG_BIT_ARB;
+            context_attribute_list[8] = 0;
+        } break;
+        default: {
+            return GFX_INVALID_CONTEXT_VERSION; // TODO: Free stuff
+        }
+    }
 
     /* 
     For some reason, on my main machine with the rx 6750 xt, this call to wglCreateContextAttribsARB
     causes GetLastError() to return 126, and the subsequent SwapBuffers call causes GetLastError() to
     generate 6. However, on a laptop with an nvidia gpu neither codes are generated. It seems to work
     just fine on both computers however so idk. */
-    window->gl_context = wglCreateContextAttribsARB(window->dc, 0, context_attribute_list);
-    if(!window->gl_context) {
-        return GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB;
-    } //printf("Context: %d\n", GetLastError());
+    window->glrc = wglCreateContextAttribsARB(window->dc, 0, context_attribute_list);
+    if(!window->glrc) {
+        return GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB; // TODO: Free resources??
+    }
 
-    if(!wglMakeCurrent(window->dc, window->gl_context)) {
+    if(!wglMakeCurrent(window->dc, window->glrc)) {
         return GFX_FAILED_TO_MAKE_CONTEXT_CURRENT;
     } printf("Make Context Current: %d\n", GetLastError());
+
+    /* Load OpenGL Procedures */
+    //HINSTANCE openglInstance = GetModuleHandleA("opengl32.lib");
+    //glDebugMessageCallback = (void*)GetProcAddress(openglInstance, "glDebugMessageCallback");
+    //if(!glDebugMessageCallback) {
+    //    printf("Failed to load glDebugmessageCallback\n");
+    //}
+//
+    //// Set up debug logging
+	//int flags;
+	//glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	//if(flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+	//	//printf("[DEBUG]: Debug context created.\n");
+	//	glEnable(GL_DEBUG_OUTPUT);
+	//	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	//	glDebugMessageCallback(gfx_default_debug_callback, NULL);
+	//	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+	//}
 
     return GFX_SUCCESS;
 }
@@ -394,10 +701,54 @@ int check_wgl_proc(void* proc) {
 	(proc == (void*)0x2) ||
 	(proc == (void*)0x3) ||
     (proc == (void*)-1)) {
-        return GFX_FAILED_TO_LOAD_WGL_PROC;
+        return 0;
     }
-    return GFX_SUCCESS;
+    return 1;
 }
+
+/* Default Debug Callback */
+static void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsigned int id, GLenum severity,
+    GLsizei length, const char *message, const void *userParam) 
+{
+
+    // Ignore insignificant warnings/errors
+    if(id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+
+    fprintf(stderr, "[Debug]:");
+    fprintf(stderr, " { ");
+    switch (source) 
+	{
+        case GL_DEBUG_SOURCE_API:             fprintf(stderr, "SRC: API"); break;
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   fprintf(stderr, "SRC: Window System"); break;
+        case GL_DEBUG_SOURCE_SHADER_COMPILER: fprintf(stderr, "SRC: Shader Compiler"); break;
+        case GL_DEBUG_SOURCE_THIRD_PARTY:     fprintf(stderr, "SRC: Third Party"); break;
+        case GL_DEBUG_SOURCE_APPLICATION:     fprintf(stderr, "SRC: Application"); break;
+        case GL_DEBUG_SOURCE_OTHER:           fprintf(stderr, "SRC: Other"); break;
+    };
+    fprintf(stderr, " | ");
+    switch (type) 
+	{
+        case GL_DEBUG_TYPE_ERROR:               fprintf(stderr, "TYPE: Error"); break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: fprintf(stderr, "TYPE: Deprecated Behaviour"); break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  fprintf(stderr, "TYPE: Undefined Behaviour"); break;
+        case GL_DEBUG_TYPE_PORTABILITY:         fprintf(stderr, "TYPE: Portability"); break;
+        case GL_DEBUG_TYPE_PERFORMANCE:         fprintf(stderr, "TYPE: Performance"); break;
+        case GL_DEBUG_TYPE_MARKER:              fprintf(stderr, "TYPE: Marker"); break;
+        case GL_DEBUG_TYPE_PUSH_GROUP:          fprintf(stderr, "TYPE: Push Group"); break;
+        case GL_DEBUG_TYPE_POP_GROUP:           fprintf(stderr, "TYPE: Pop Group"); break;
+        case GL_DEBUG_TYPE_OTHER:               fprintf(stderr, "TYPE: Other"); break;
+    };
+    printf(" | ");
+    switch (severity) 
+	{
+        case GL_DEBUG_SEVERITY_HIGH:         fprintf(stderr, "Severity"); break;
+        case GL_DEBUG_SEVERITY_MEDIUM:       fprintf(stderr, "Severity"); break;
+        case GL_DEBUG_SEVERITY_LOW:          fprintf(stderr, "Severity"); break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION: fprintf(stderr, "Severity"); break;
+    };
+    fprintf(stderr, " }: %s\n", message);
+}
+
 
 //LRESULT Win32WindowProc(
 //	HWND WindowHandle,

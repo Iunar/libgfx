@@ -11,8 +11,8 @@
 typedef struct {
     WNDCLASSEXA class;
     HWND handle;
-    HDC dc;
-    HGLRC gl_context;
+    HDC dc; // Device Context
+    HGLRC glrc; // OpenGL Render Context
 
     int width;
     int height;
@@ -21,9 +21,10 @@ typedef struct {
 
 typedef void (*GFX_KEY_CALLBACK)(int, int);
 
-int gfx_load_wgl_extensions();
-int gfx_create_window(gfx_window* window, int width, int height, const char* title);
-int gfx_create_opengl_context(gfx_window* window);
+int  gfx_load_wgl_extensions();
+int  gfx_create_window(gfx_window* window, int width, int height, const char* title);
+void gfx_destroy_window(gfx_window* window);
+int  gfx_create_opengl_context(gfx_window* window, int context_version);
 void gfx_poll_events(gfx_window window);
 void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback);
 

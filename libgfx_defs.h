@@ -18,9 +18,9 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_FAILED_TO_LOAD_WGL_PROCS          (int)9
 #define GFX_FAILED_TO_CHOOSE_PIXEL_FORMAT_ARB (int)10
 #define GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB   (int)11
+#define GFX_INVALID_CONTEXT_VERSION           (int)12
 
 /* Input */
-
 #define GFX_KEY_DOWN (int)0x00
 #define GFX_KEY_UP   (int)0x01
 
@@ -50,5 +50,43 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_KEY_X (int)0x58
 #define GFX_KEY_Y (int)0x59
 #define GFX_KEY_Z (int)0x5A
+
+/* OpenGL Context Options (legacy versions not supported) */
+
+/* Core */
+#define GFX_OPENGL_CORE_3_0 (int)0x50
+#define GFX_OPENGL_CORE_3_1 (int)0x51
+#define GFX_OPENGL_CORE_3_2 (int)0x52
+#define GFX_OPENGL_CORE_3_3 (int)0x53
+#define GFX_OPENGL_CORE_4_0 (int)0x54
+#define GFX_OPENGL_CORE_4_1 (int)0x55
+#define GFX_OPENGL_CORE_4_2 (int)0x56
+#define GFX_OPENGL_CORE_4_3 (int)0x57
+#define GFX_OPENGL_CORE_4_4 (int)0x58
+#define GFX_OPENGL_CORE_4_5 (int)0x59
+#define GFX_OPENGL_CORE_4_6 (int)0x5A
+
+/* Compatibility */
+#define GFX_OPENGL_COMPATIBILITY_3_2 (int)0x5B
+#define GFX_OPENGL_COMPATIBILITY_3_3 (int)0x5C
+#define GFX_OPENGL_COMPATIBILITY_4_0 (int)0x5D
+#define GFX_OPENGL_COMPATIBILITY_4_1 (int)0x5E
+#define GFX_OPENGL_COMPATIBILITY_4_2 (int)0x5F
+#define GFX_OPENGL_COMPATIBILITY_4_3 (int)0x60
+#define GFX_OPENGL_COMPATIBILITY_4_4 (int)0x61
+#define GFX_OPENGL_COMPATIBILITY_4_5 (int)0x62
+#define GFX_OPENGL_COMPATIBILITY_4_6 (int)0x63
+
+/* Core Debug */
+#define GFX_OPENGL_CORE_4_3_DEBUG (int)0x64
+#define GFX_OPENGL_CORE_4_4_DEBUG (int)0x65
+#define GFX_OPENGL_CORE_4_5_DEBUG (int)0x66
+#define GFX_OPENGL_CORE_4_6_DEBUG (int)0x67
+
+/* Compatibility Debug */
+#define GFX_OPENGL_COMPATIBILITY_4_3_DEBUG (int)0x68
+#define GFX_OPENGL_COMPATIBILITY_4_4_DEBUG (int)0x69
+#define GFX_OPENGL_COMPATIBILITY_4_5_DEBUG (int)0x6A
+#define GFX_OPENGL_COMPATIBILITY_4_6_DEBUG (int)0x6B
 
 #endif // LIBGFX_DEFS_H

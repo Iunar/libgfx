@@ -1,9 +1,19 @@
+
+/*
+    TODO: 
+        virtual keys
+        mouse input
+        close window proc
+        rewrite create context proc
+*/
+
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #include <assert.h>
 
 #include <gl/gl.h>
 #include "wglext.h"
+//#define GL_GLEXT_PROTOTYPES 1
 #include "glcorearb.h"
 
 #include "libgfx.h"
@@ -26,7 +36,7 @@ int main() {
         return -1;
     } printf("Successfully created gfx window, %d\n", status);
 
-    if((status = gfx_create_opengl_context(&window)) != GFX_SUCCESS) {
+    if((status = gfx_create_opengl_context(&window, GFX_OPENGL_CORE_4_6_DEBUG)) != GFX_SUCCESS) {
         printf("Failed to create opengl context, %d\n", status);
         return -1;
     } printf("Successfully created opengl context, %d\n", status);
@@ -44,7 +54,7 @@ int main() {
         SwapBuffers(window.dc);
     }
 
-    // TODO: gfx_close_window();
+    gfx_destroy_window(&window);
     return 0;
 }
 
