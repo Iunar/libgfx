@@ -41,7 +41,9 @@ int main() {
         glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        SwapBuffers(window.dc);
+        if(!SwapBuffers(window.dc)) {
+            printf("%s\n", GetLastError());
+        }
     }
 
     // TODO: gfx_close_window();
@@ -56,6 +58,7 @@ void key_callback(int key, int state) { // why are both the key and state 0 some
     } else if((key == GFX_KEY_B) && (state == GFX_KEY_DOWN)) {
         glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
     }
+
     if((key == GFX_KEY_Q) && (state == GFX_KEY_DOWN)) {
         window.should_close = 1;
     }
