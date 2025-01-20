@@ -1,9 +1,3 @@
-
-/*
-    TODO: 
-        virtual keys
-*/
-
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #include <assert.h>
@@ -15,18 +9,6 @@ void key_callback(int key, int state);
 void mouse_pos_callback(double x, double y);
 void mouse_button_callback(int button, double x, double y);
 void window_size_callback(int width, int height);
-
-/*
-    [win32/opengl problem]
-    Hey all! I've recently been working on a very small windowing and input library
-    using win32 and c with the primary objective of using it in my opengl projects,
-    however, I've run into an odd issue with glViewport. The issue is that when 
-    I set the opengl viewport to be the same size as the client rect of the win32
-    window, the renders are vertically squished by half of the height. The only hack
-    I've managed to find is simply multiplying the height by two whenever you set the
-    viewport... If anyone has any idea what the problem might be, I would love to hear
-    it. Here is the _link_ to the source code. Thanks!
-*/
 
 #include <stdio.h>
 int main() {
