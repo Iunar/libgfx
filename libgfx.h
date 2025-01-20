@@ -19,9 +19,12 @@ typedef struct {
     int should_close;
 } gfx_window;
 
+typedef void (*GFX_KEY_CALLBACK)(int, int);
+
 int gfx_load_wgl_extensions();
 int gfx_create_window(gfx_window* window, int width, int height, const char* title);
 int gfx_create_opengl_context(gfx_window* window);
 void gfx_poll_events(gfx_window window);
+void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback);
 
 #endif // LIBGFX_H

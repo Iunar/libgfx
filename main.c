@@ -9,6 +9,7 @@
 #include "libgfx.h"
 
 static gfx_window window;
+void key_callback(int key, int state);
 
 #include <stdio.h>
 int main() {
@@ -31,6 +32,8 @@ int main() {
     } printf("Successfully created opengl context, %d\n", status);
     printf("GL version: %s\n", glGetString(GL_VERSION));
 
+    gfx_set_key_callback(key_callback);
+
     glViewport(0, 0, window.width, window.height);
     while(!window.should_close) {
         gfx_poll_events(window);
@@ -41,5 +44,19 @@ int main() {
         SwapBuffers(window.dc);
     }
 
+    // TODO: gfx_close_window();
     return 0;
+}
+
+void key_callback(int key, int state) { // why are both the key and state 0 sometimes ??
+    if((key == GFX_KEY_R) && (state == GFX_KEY_DOWN)) {
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    } else if((key == GFX_KEY_G) && (state == GFX_KEY_DOWN)) {
+        glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    } else if((key == GFX_KEY_B) && (state == GFX_KEY_DOWN)) {
+        glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    }
+    if((key == GFX_KEY_Q) && (state == GFX_KEY_DOWN)) {
+        window.should_close = 1;
+    }
 }

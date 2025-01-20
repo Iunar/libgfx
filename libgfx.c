@@ -21,6 +21,8 @@ PFNWGLSWAPINTERVALEXTPROC               wglSwapIntervalEXT = NULL;
 /* Utility */
 int check_wgl_proc(void* proc);
 
+GFX_KEY_CALLBACK user_key_callback = NULL;
+
 LRESULT gfx_def_winproc(
   HWND window,
   UINT message,
@@ -30,6 +32,103 @@ LRESULT gfx_def_winproc(
     LRESULT result = 0;
 
     switch(message) {
+        case WM_CHAR:
+        case WM_KEYUP:
+        case WM_KEYDOWN: {
+        
+            int key_code = 0;
+            switch(wparam) { // TODO: Does any casting need to happen?
+                case GFX_KEY_A: {
+                    key_code = GFX_KEY_A;
+                } break;
+                case GFX_KEY_B: {
+                    key_code = GFX_KEY_B;
+                } break;
+                case GFX_KEY_C: {
+                    key_code = GFX_KEY_C;
+                } break;
+                case GFX_KEY_D: {
+                    key_code = GFX_KEY_D;
+                } break;
+                case GFX_KEY_E: {
+                    key_code = GFX_KEY_R;
+                } break;
+                case GFX_KEY_F: {
+                    key_code = GFX_KEY_F;
+                } break;
+                case GFX_KEY_G: {
+                    key_code = GFX_KEY_G;
+                } break;
+                case GFX_KEY_H: {
+                    key_code = GFX_KEY_H;
+                } break;
+                case GFX_KEY_I: {
+                    key_code = GFX_KEY_I;
+                } break;
+                case GFX_KEY_J: {
+                    key_code = GFX_KEY_J;
+                } break;
+                case GFX_KEY_K: {
+                    key_code = GFX_KEY_K;
+                } break;
+                case GFX_KEY_L: {
+                    key_code = GFX_KEY_L;
+                } break;
+                case GFX_KEY_M: {
+                    key_code = GFX_KEY_M;
+                } break;
+                case GFX_KEY_N: {
+                    key_code = GFX_KEY_N;
+                } break;
+                case GFX_KEY_O: {
+                    key_code = GFX_KEY_O;
+                } break;
+                case GFX_KEY_P: {
+                    key_code = GFX_KEY_P;
+                } break;
+                case GFX_KEY_Q: {
+                    key_code = GFX_KEY_Q;
+                } break;
+                case GFX_KEY_R: {
+                    key_code = GFX_KEY_R;
+                } break;
+                case GFX_KEY_S: {
+                    key_code = GFX_KEY_S;
+                } break;
+                case GFX_KEY_T: {
+                    key_code = GFX_KEY_T;
+                } break;
+                case GFX_KEY_U: {
+                    key_code = GFX_KEY_U;
+                } break;
+                case GFX_KEY_V: {
+                    key_code = GFX_KEY_V;
+                } break;
+                case GFX_KEY_W: {
+                    key_code = GFX_KEY_W;
+                } break;
+                case GFX_KEY_X: {
+                    key_code = GFX_KEY_X;
+                } break;
+                case GFX_KEY_Y: {
+                    key_code = GFX_KEY_Y;
+                } break;
+                case GFX_KEY_Z: {
+                    key_code = GFX_KEY_Z;
+                } break;
+                default: break;
+            }
+
+            int key_state = GFX_KEY_UP; // If transition flag is set to 1
+            if( ((lparam >> 31) & 1) == 0) {
+                key_state = GFX_KEY_DOWN; // If transition flag is set to 0
+            }
+
+            if(user_key_callback) {
+                user_key_callback(key_code, key_state);
+            }
+
+        } break;
         default: {
             result = DefWindowProcA(window, message, wparam, lparam);
         } break;
@@ -277,6 +376,10 @@ void gfx_poll_events(gfx_window window) { // TODO: Error checking
 	}
 }
 
+void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback) {
+    user_key_callback = key_callback;
+}
+
 // TODO: Make internal?
 internal
 int check_wgl_proc(void* proc) {
@@ -290,3 +393,39 @@ int check_wgl_proc(void* proc) {
     }
     return GFX_SUCCESS;
 }
+
+//LRESULT Win32WindowProc(
+//	HWND WindowHandle,
+//	UINT Message,
+//	WPARAM WParam,
+//	LPARAM LParam
+//) {
+//	LRESULT result = 0;
+//	switch(Message) {
+//		case WM_CLOSE: {
+//			WindowShouldClose = 1;
+//		} break;
+//
+//		// Key-up events
+//		// Docs: https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input
+//		case WM_KEYUP: {
+//			WORD vkCode = LOWORD(WParam);		// Virtual
+//			WORD keyFlags = HIWORD(LParam);		// Flags
+//			//WORD scanCode = LOBYTE(keyFlags);
+//
+//			switch(vkCode) {
+//				case VK_ESCAPE: {
+//					WindowShouldClose = 1;
+//				}break;
+//				default:
+//					break;
+//			}
+//			result = DefWindowProc(WindowHandle, Message, WParam, LParam);
+//		} break;
+//
+//		default: {
+//			result = DefWindowProc(WindowHandle, Message, WParam, LParam);
+//		}
+//	}
+//	return result;
+//}
