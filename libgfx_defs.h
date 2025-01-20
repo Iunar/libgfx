@@ -1,6 +1,8 @@
 #ifndef LIBGFX_DEFS_H
 #define LIBGFX_DEFS_H 1
 
+#include "glcorearb.h"
+
 // Raymond Chen is my goat
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define HINST_LIBGFX ((HINSTANCE)&__ImageBase)
@@ -90,5 +92,32 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_OPENGL_COMPATIBILITY_4_4_DEBUG (int)0x69
 #define GFX_OPENGL_COMPATIBILITY_4_5_DEBUG (int)0x6A
 #define GFX_OPENGL_COMPATIBILITY_4_6_DEBUG (int)0x6B
+
+/* Opengl Procs */
+
+// Buffers
+PFNGLGENVERTEXARRAYSPROC            glGenVertexArrays;
+PFNGLGENBUFFERSPROC                 glGenBuffers;
+PFNGLBINDVERTEXARRAYPROC            glBindVertexArray;
+PFNGLBINDBUFFERPROC                 glBindBuffer;
+PFNGLBUFFERDATAPROC                 glBufferData;
+PFNGLBUFFERSUBDATAPROC              glBufferSubData;
+PFNGLENABLEVERTEXATTRIBARRAYPROC    glEnableVertexAttribArray;
+PFNGLVERTEXATTRIBPOINTERPROC        glVertexAttribPointer;
+//PFNGLDRAWELEMENTSPROC               glDrawElements; I guess its already defined in gl/gl.h
+
+// Shaders
+PFNGLSHADERSOURCEPROC           glShaderSource;
+PFNGLCOMPILESHADERPROC          glCompileShader;
+PFNGLGETSHADERIVPROC            glGetShaderiv;
+PFNGLGETSHADERINFOLOGPROC       glGetShaderInfoLog;
+PFNGLCREATESHADERPROC           glCreateShader;
+PFNGLCREATEPROGRAMPROC          glCreateProgram;
+PFNGLATTACHSHADERPROC           glAttachShader;
+PFNGLLINKPROGRAMPROC            glLinkProgram;
+PFNGLGETPROGRAMIVPROC           glGetProgramiv;
+PFNGLGETPROGRAMINFOLOGPROC      glGetProgramInfoLog;
+PFNGLDELETESHADERPROC           glDeleteShader;
+PFNGLUSEPROGRAMPROC             glUseProgram;
 
 #endif // LIBGFX_DEFS_H

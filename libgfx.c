@@ -5,6 +5,7 @@
 #endif
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <gl/gl.h>
 #include "glcorearb.h"
@@ -31,6 +32,8 @@ PFNGLDEBUGMESSAGECONTROLARBPROC         glDebugMessageControl = NULL;
 
 /* Utility */
 int check_wgl_proc(void* proc);
+void gfx_load_gl_procs();
+char* read_file(const char* path);
 
 GFX_KEY_CALLBACK user_key_callback = NULL;
 void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsigned int id, GLenum severity,
@@ -679,6 +682,9 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
            which would imply that glDebugMessageCallback and glDebugMessageControl are coming
            from an extension, however, according to khronos, debug functionality has been in 
            opengl core since 4.3... I was unable to use GetProcAddress to find these functions...
+
+           Update: So according to khronos "The functions (returned by wglGetProcAddress) can be OpenGL functions or
+                platform-specific WGL functions.". So its not loading debug functions from an extensions it seems.
         */
         /* Load Debug Procedures */
         glDebugMessageCallback = (void*)wglGetProcAddress("glDebugMessageCallback");
@@ -692,6 +698,9 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
 		    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
         }
 	}
+
+    /* Load opengl functions */
+    gfx_load_gl_procs();
 
     GFX_RETURN(GFX_SUCCESS);
 }
@@ -707,6 +716,61 @@ void gfx_poll_events(gfx_window window) { // TODO: Error checking
 
 void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback) {
     user_key_callback = key_callback;
+}
+
+// TODO: error handling
+GLuint gfx_create_shader(const char* VertexSource, const char* FragmentSource) {
+	int success;
+	char log[512];
+    printf("log def\n");
+
+	// Read shader sources, create handles
+	const char* VertexString   = read_file(VertexSource);
+    const char* FragmentString = read_file(FragmentSource);
+
+	GLuint VertexHandle = glCreateShader(GL_VERTEX_SHADER);
+	GLuint FragmentHandle = glCreateShader(GL_FRAGMENT_SHADER);
+
+	// Compile shader and check status
+	glShaderSource(VertexHandle, 1, &VertexString, NULL);
+	glCompileShader(VertexHandle);
+	glGetShaderiv(VertexHandle, GL_COMPILE_STATUS, &success);
+	if(!success) 
+	{
+		glGetShaderInfoLog(VertexHandle, 512, NULL, log);
+		fprintf(stderr, "[shader.c] vertex shader compilation failed: %s\n", log);
+	}
+
+	// Create and compile fragment shader
+	glShaderSource(FragmentHandle, 1, &FragmentString, NULL);
+	glCompileShader(FragmentHandle);
+	glGetShaderiv(FragmentHandle, GL_COMPILE_STATUS, &success);
+	if(!success) 
+	{
+		glGetShaderInfoLog(FragmentHandle, 512, NULL, log);
+		fprintf(stderr, "[shader.c] fragment shader compilation failed: %s\n", log);
+		exit(-1);
+	}
+
+	// Create and link shader program
+	GLuint program;
+	program = glCreateProgram();
+
+	glAttachShader(program, VertexHandle);
+	glAttachShader(program, FragmentHandle);
+	glLinkProgram(program);
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
+	if(!success) 
+	{
+		glGetProgramInfoLog(program, 512, NULL, log);
+		fprintf(stderr, "[shader.c] program linkage failed: %s\n", log);
+		exit(-1);
+	}
+
+	glDeleteShader(VertexHandle);
+	glDeleteShader(FragmentHandle);
+
+	return program;
 }
 
 // TODO: Make internal?
@@ -766,6 +830,74 @@ static void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsig
     fprintf(stderr, " }: %s\n", message);
 }
 
+internal
+void gfx_load_gl_procs() {
+    glGenVertexArrays          = (void*)wglGetProcAddress("glGenVertexArrays");
+    glGenBuffers               = (void*)wglGetProcAddress("glGenBuffers");
+    glBindVertexArray          = (void*)wglGetProcAddress("glBindVertexArray");
+    glBindBuffer               = (void*)wglGetProcAddress("glBindBuffer");
+    glBufferData               = (void*)wglGetProcAddress("glBufferData");
+    glBufferSubData            = (void*)wglGetProcAddress("glBufferSubData");
+    glEnableVertexAttribArray  = (void*)wglGetProcAddress("glEnableVertexAttribArray");
+    glVertexAttribPointer      = (void*)wglGetProcAddress("glVertexAttribPointer");
+    
+    glShaderSource             = (void*)wglGetProcAddress("glShaderSource");
+    glCompileShader            = (void*)wglGetProcAddress("glCompileShader");
+    glGetShaderiv              = (void*)wglGetProcAddress("glGetShaderiv");
+    glGetShaderInfoLog         = (void*)wglGetProcAddress("glGetShaderInfoLog");
+    glCreateShader             = (void*)wglGetProcAddress("glCreateShader");
+    glCreateProgram            = (void*)wglGetProcAddress("glCreateProgram");
+    glAttachShader             = (void*)wglGetProcAddress("glAttachShader");
+    glLinkProgram              = (void*)wglGetProcAddress("glLinkProgram");
+    glGetProgramiv             = (void*)wglGetProcAddress("glGetProgramiv");
+    glGetProgramInfoLog        = (void*)wglGetProcAddress("glGetProgramInfoLog");
+    glDeleteShader             = (void*)wglGetProcAddress("glDeleteShader");
+    glUseProgram               = (void*)wglGetProcAddress("glUseProgram");
+}
+
+static char* read_file(const char* path) {
+	// Open file
+	HANDLE fp = CreateFileA(
+		path,
+		GENERIC_READ,
+		0, // Share-Mode
+		NULL, // Security Attribs
+		3, // OPEN_EXISTING
+		FILE_ATTRIBUTE_NORMAL,
+		NULL // Template File
+	);
+	if(fp == INVALID_HANDLE_VALUE) {
+		fprintf(stderr, "[shader.c] failed to open file, WinError: %d\n", GetLastError());
+		ExitProcess(-1);
+	}
+
+	// Allocate buffer
+    LARGE_INTEGER file_size; file_size.QuadPart = 0;
+    GetFileSizeEx(fp, &file_size);
+	char* res = malloc(file_size.QuadPart + 1);
+    printf("%I64d\n", file_size.QuadPart);
+    if(!res) {
+		fprintf(stderr, "[shader.c] malloc failed, %s\n", strerror(errno));
+		ExitProcess(-1);
+	}
+	res[file_size.QuadPart] = '\0';
+
+	// Read file
+	int status = ReadFile(
+		fp,
+		res,
+		file_size.QuadPart,
+		NULL,
+		NULL
+	);
+	if(status == 0) {
+		fprintf(stderr, "[shader.c] read failed, WinError: %d\n", GetLastError());
+	}
+
+	CloseHandle(fp);
+
+	return res;
+}
 
 //LRESULT Win32WindowProc(
 //	HWND WindowHandle,
