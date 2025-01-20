@@ -23,6 +23,9 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_INVALID_CONTEXT_VERSION           (int)12
 #define GFX_FAILED_TO_LOAD_GL_DEBUG_PROCS     (int)13
 #define GFX_WGL_PROC_INVALID                  (int)14
+#define GFX_FAILED_TO_SET_WINDOW_POS          (int)15
+#define GFX_FAILED_TO_GET_WINDOW_INFO         (int)16
+#define GFX_FAILED_TO_ADJUST_WINDOW_RECT      (int)17
 
 /* Input */
 #define GFX_KEY_DOWN (int)0x00
@@ -54,6 +57,14 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_KEY_X (int)0x58
 #define GFX_KEY_Y (int)0x59
 #define GFX_KEY_Z (int)0x5A
+
+#define GFX_MOUSE_LEFT_DOWN   (int)0x5B
+#define GFX_MOUSE_RIGHT_DOWN  (int)0x5C
+#define GFX_MOUSE_MIDDLE_DOWN (int)0x5D
+
+#define GFX_MOUSE_LEFT_UP     (int)0x5E
+#define GFX_MOUSE_RIGHT_UP    (int)0x5F
+#define GFX_MOUSE_MIDDLE_UP   (int)0x60
 
 /* OpenGL Context Options (legacy versions not supported) */
 

@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 #include <windows.h>
+#include <Windowsx.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -35,7 +36,12 @@ int check_wgl_proc(void* proc);
 void gfx_load_gl_procs();
 char* read_file(const char* path);
 
+/* User Callbacks */
 GFX_KEY_CALLBACK user_key_callback = NULL;
+GFX_MOUSE_POS_CALLBACK user_mouse_pos_callback = NULL;
+GFX_MOUSE_BUTTON_CALLBACK user_mouse_button_callback = NULL;
+GFX_WINDOW_SIZE_CALLBACK user_window_size_callback = NULL;
+
 void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsigned int id, GLenum severity,
     GLsizei length, const char *message, const void *userParam);
 
@@ -48,6 +54,63 @@ LRESULT gfx_def_winproc(
     LRESULT result = 0;
 
     switch(message) {
+        case WM_SIZE: {
+            if(user_window_size_callback) {
+                UINT width  = LOWORD(lparam);
+                UINT height = HIWORD(lparam);
+                user_window_size_callback((int)width, (int)height);
+            }
+        } break;
+        case WM_LBUTTONDOWN: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_LEFT_DOWN, x, y);
+            }
+        } break;
+        case WM_RBUTTONDOWN: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_RIGHT_DOWN, x, y);
+            }
+        } break;
+        case WM_MBUTTONDOWN: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_MIDDLE_DOWN, x, y);
+            }
+        } break;
+        case WM_LBUTTONUP: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_LEFT_UP, x, y);
+            }
+        } break;
+        case WM_RBUTTONUP: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_RIGHT_UP, x, y);
+            }
+        } break;
+        case WM_MBUTTONUP: {
+            if(user_mouse_button_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam);
+                user_mouse_button_callback(GFX_MOUSE_MIDDLE_UP, x, y);
+            }
+        } break;
+        case WM_MOUSEMOVE: {
+            if(user_mouse_pos_callback) {
+                double x = GET_X_LPARAM(lparam);
+                double y = GET_Y_LPARAM(lparam); 
+                
+                user_mouse_pos_callback(x, y);
+            }
+        } break;
         case WM_CHAR:
         case WM_KEYUP:
         case WM_KEYDOWN: {
@@ -280,7 +343,6 @@ int gfx_load_wgl_extensions() {
 
 /* Create window without setting the pixel format */
 int gfx_create_window(gfx_window* window, int width, int height, const char* title) {
-    // TODO: Window proc option
     window->width = width;
     window->height = height;
     window->should_close = 0;
@@ -307,7 +369,7 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     /* Create */
     window->handle = 
     CreateWindowExA(
-        WS_EX_OVERLAPPEDWINDOW,             // dwExStyle
+        0,             // dwExStyle
         window->class.lpszClassName,        // lpClassName
         title,                              // lpWindowName
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,   // dwStyle
@@ -331,6 +393,10 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     	DestroyWindow(window->handle);
     	UnregisterClassA(window->class.lpszClassName, window->class.hInstance);
         GFX_RETURN(GFX_FAILED_TO_GET_DC);
+    }
+
+    if(!gfx_set_window_size(window, width, height)) {
+        return gfx_get_last_error();
     }
 
     GFX_RETURN(GFX_SUCCESS);
@@ -705,6 +771,34 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
     GFX_RETURN(GFX_SUCCESS);
 }
 
+// Still not sure if this works
+int gfx_set_window_size(gfx_window* window, int width, int height) {
+	// Get general window info for style
+	WINDOWINFO wi;
+	if (!GetWindowInfo(window->handle, &wi)) {
+		return GFX_FAILED_TO_GET_WINDOW_INFO;
+	}
+
+	// Calculate rect
+	RECT r;
+	r.left = r.top = 0;
+	r.right  = width;
+	r.bottom = height;
+
+	// Calculate appropriate window rect for dimensions
+	if (!AdjustWindowRect(&r, wi.dwStyle, FALSE)) {
+		return GFX_FAILED_TO_ADJUST_WINDOW_RECT;
+	}
+
+	// Set window rect based on this (check flags)
+	if (!SetWindowPos(window->handle, HWND_TOP, 0, 0, r.right-r.left, r.bottom-r.top, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE)) {
+		return GFX_FAILED_TO_SET_WINDOW_POS;
+	}
+
+    return GFX_SUCCESS;
+}
+
+
 /* Process messages in event queue */
 void gfx_poll_events(gfx_window window) { // TODO: Error checking
 	MSG msg = {0};
@@ -716,6 +810,18 @@ void gfx_poll_events(gfx_window window) { // TODO: Error checking
 
 void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback) {
     user_key_callback = key_callback;
+}
+
+void gfx_set_mouse_pos_callback(GFX_MOUSE_POS_CALLBACK mouse_pos_callback) {
+    user_mouse_pos_callback = mouse_pos_callback;
+}
+
+void gfx_set_mouse_button_callback(GFX_MOUSE_BUTTON_CALLBACK mouse_button_callback) {
+    user_mouse_button_callback = mouse_button_callback;
+}
+
+void gfx_set_window_size_callback(GFX_WINDOW_SIZE_CALLBACK window_size_callback) {
+    user_window_size_callback = window_size_callback;
 }
 
 // TODO: error handling
@@ -772,7 +878,6 @@ GLuint gfx_create_shader(const char* VertexSource, const char* FragmentSource) {
 	return program;
 }
 
-// TODO: Make internal?
 internal
 int check_wgl_proc(void* proc) {
 	// Check validity
@@ -896,39 +1001,3 @@ static char* read_file(const char* path) {
 
 	return res;
 }
-
-//LRESULT Win32WindowProc(
-//	HWND WindowHandle,
-//	UINT Message,
-//	WPARAM WParam,
-//	LPARAM LParam
-//) {
-//	LRESULT result = 0;
-//	switch(Message) {
-//		case WM_CLOSE: {
-//			WindowShouldClose = 1;
-//		} break;
-//
-//		// Key-up events
-//		// Docs: https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input
-//		case WM_KEYUP: {
-//			WORD vkCode = LOWORD(WParam);		// Virtual
-//			WORD keyFlags = HIWORD(LParam);		// Flags
-//			//WORD scanCode = LOBYTE(keyFlags);
-//
-//			switch(vkCode) {
-//				case VK_ESCAPE: {
-//					WindowShouldClose = 1;
-//				}break;
-//				default:
-//					break;
-//			}
-//			result = DefWindowProc(WindowHandle, Message, WParam, LParam);
-//		} break;
-//
-//		default: {
-//			result = DefWindowProc(WindowHandle, Message, WParam, LParam);
-//		}
-//	}
-//	return result;
-//}
