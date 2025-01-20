@@ -35,15 +35,13 @@ int main() {
     gfx_set_key_callback(key_callback);
 
     glViewport(0, 0, window.width, window.height);
+    glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
     while(!window.should_close) {
         gfx_poll_events(window);
 
-        glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        if(!SwapBuffers(window.dc)) {
-            printf("%s\n", GetLastError());
-        }
+        SwapBuffers(window.dc);
     }
 
     // TODO: gfx_close_window();
