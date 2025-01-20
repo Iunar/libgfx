@@ -3,8 +3,6 @@
     TODO: 
         virtual keys
         mouse input
-        close window proc
-        rewrite create context proc
 */
 
 #define WIN32_LEAN_AND_MEAN 1
@@ -13,7 +11,6 @@
 
 #include <gl/gl.h>
 #include "wglext.h"
-//#define GL_GLEXT_PROTOTYPES 1
 #include "glcorearb.h"
 
 #include "libgfx.h"
@@ -25,27 +22,26 @@ void key_callback(int key, int state);
 int main() {
     int status = 0;
     /* Load wgl extensions */
-    if((status = gfx_load_wgl_extensions()) != GFX_SUCCESS) {
-        printf("Failed to load wgl extensions, %d\n", status);
+    if(gfx_load_wgl_extensions() != GFX_SUCCESS) {
+        printf("Failed to load wgl extensions, %d\n", gfx_get_last_error());
         return -1;
-    } printf("Successfully loaded wgl extensions, %d\n", status);
+    }
 
     /* Create main window*/
-    if((status = gfx_create_window(&window, 512, 512, "[GFX]")) != GFX_SUCCESS) {
-        printf("Failed to create window, %d\n", status);
+    if(gfx_create_window(&window, 512, 512, "[GFX]") != GFX_SUCCESS) {
+        printf("Failed to create window, %d\n", gfx_get_last_error());
         return -1;
-    } printf("Successfully created gfx window, %d\n", status);
+    }
 
-    if((status = gfx_create_opengl_context(&window, GFX_OPENGL_CORE_4_6_DEBUG)) != GFX_SUCCESS) {
-        printf("Failed to create opengl context, %d\n", status);
+    if(gfx_create_opengl_context(&window, GFX_OPENGL_CORE_4_6_DEBUG) != GFX_SUCCESS) {
+        printf("Failed to create opengl context, %d\n", gfx_get_last_error());
         return -1;
-    } printf("Successfully created opengl context, %d\n", status);
-    printf("GL version: %s\n", glGetString(GL_VERSION));
+    } printf("GL version: %s\n", glGetString(GL_VERSION));
 
     gfx_set_key_callback(key_callback);
-
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
+
     while(!window.should_close) {
         gfx_poll_events(window);
 

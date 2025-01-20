@@ -19,6 +19,8 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_FAILED_TO_CHOOSE_PIXEL_FORMAT_ARB (int)10
 #define GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB   (int)11
 #define GFX_INVALID_CONTEXT_VERSION           (int)12
+#define GFX_FAILED_TO_LOAD_GL_DEBUG_PROCS     (int)13
+#define GFX_WGL_PROC_INVALID                  (int)14
 
 /* Input */
 #define GFX_KEY_DOWN (int)0x00

@@ -21,6 +21,7 @@ typedef struct {
 
 typedef void (*GFX_KEY_CALLBACK)(int, int);
 
+int  gfx_get_last_error();
 int  gfx_load_wgl_extensions();
 int  gfx_create_window(gfx_window* window, int width, int height, const char* title);
 void gfx_destroy_window(gfx_window* window);

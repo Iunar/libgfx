@@ -10,16 +10,24 @@
 #include "glcorearb.h"
 #include "wglext.h"
 
-PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
-
-
 #define internal static
+#define global   static
+
+global int gfx_last_error = GFX_SUCCESS;
+
+#define GFX_RETURN(ERR) \
+gfx_last_error = (ERR);\
+return ERR
 
 /* wgl Procs */
 PFNWGLCREATECONTEXTATTRIBSARBPROC       wglCreateContextAttribsARB = NULL;
 PFNWGLGETPIXELFORMATATTRIBIVARBPROC     wglGetPixelFormatAttribivARB = NULL;
 PFNWGLCHOOSEPIXELFORMATARBPROC          wglChoosePixelFormatARB = NULL;
 PFNWGLSWAPINTERVALEXTPROC               wglSwapIntervalEXT = NULL;
+
+/* gl Debug Procs (defined in glcorearb.h) */
+PFNGLDEBUGMESSAGECALLBACKPROC           glDebugMessageCallback = NULL;
+PFNGLDEBUGMESSAGECONTROLARBPROC         glDebugMessageControl = NULL;
 
 /* Utility */
 int check_wgl_proc(void* proc);
@@ -142,6 +150,10 @@ LRESULT gfx_def_winproc(
     return result;
 }
 
+int gfx_get_last_error() {
+    return gfx_last_error;
+}
+
 /* Load required wgl functions to create a modern opengl context */
 int gfx_load_wgl_extensions() {
     WNDCLASSEXA dummy_class = { 0 };
@@ -162,7 +174,7 @@ int gfx_load_wgl_extensions() {
 
     /* Register */
     if(!RegisterClassExA(&dummy_class)) {
-        return GFX_FAILED_TO_REGISTER_CLASSEXA;
+        GFX_RETURN(GFX_FAILED_TO_REGISTER_CLASSEXA);
     }
 
     /* Create */
@@ -183,7 +195,7 @@ int gfx_load_wgl_extensions() {
     );
     if(!dummy_handle) {
         UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_CREATE_WINDOW;
+        GFX_RETURN(GFX_FAILED_TO_CREATE_WINDOW);
     }
 
     /* DC */
@@ -191,7 +203,7 @@ int gfx_load_wgl_extensions() {
     if(!dummy_context) {
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_GET_DC;
+        GFX_RETURN(GFX_FAILED_TO_GET_DC);
     }
 
     /* Pixel format */
@@ -201,14 +213,14 @@ int gfx_load_wgl_extensions() {
     	ReleaseDC(dummy_handle, dummy_context);
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-    	return GFX_FAILED_TO_DESCRIBE_PIXEL_FORMAT;
+    	GFX_RETURN(GFX_FAILED_TO_DESCRIBE_PIXEL_FORMAT);
     }
 
     if(!SetPixelFormat(dummy_context, pixel_format, &format_description)) {
         ReleaseDC(dummy_handle, dummy_context);
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_SET_PIXEL_FORMAT;
+        GFX_RETURN(GFX_FAILED_TO_SET_PIXEL_FORMAT);
     }
     
     /* Context */
@@ -217,7 +229,7 @@ int gfx_load_wgl_extensions() {
         ReleaseDC(dummy_handle, dummy_context);
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_CREATE_GL_CONTEXT;
+        GFX_RETURN(GFX_FAILED_TO_CREATE_GL_CONTEXT);
     }
     
     if(!wglMakeCurrent(dummy_context, dummy_gl_context)) {
@@ -225,7 +237,7 @@ int gfx_load_wgl_extensions() {
         ReleaseDC(dummy_handle, dummy_context);
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_MAKE_CONTEXT_CURRENT;
+        GFX_RETURN(GFX_FAILED_TO_MAKE_CONTEXT_CURRENT);
     }
 
     /* Load functions */
@@ -245,7 +257,7 @@ int gfx_load_wgl_extensions() {
         ReleaseDC(dummy_handle, dummy_context);
     	DestroyWindow(dummy_handle);
     	UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
-        return GFX_FAILED_TO_LOAD_WGL_PROCS;
+        GFX_RETURN(GFX_FAILED_TO_LOAD_WGL_PROCS);
     }
 
     /* Clean up */
@@ -260,7 +272,7 @@ int gfx_load_wgl_extensions() {
 
     UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
 
-    return GFX_SUCCESS;
+    GFX_RETURN(GFX_SUCCESS);
 }
 
 /* Create window without setting the pixel format */
@@ -286,7 +298,7 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
 
     /* Register */
     if(!RegisterClassExA(&window->class)) {
-        return GFX_FAILED_TO_REGISTER_CLASSEXA;
+        GFX_RETURN(GFX_FAILED_TO_REGISTER_CLASSEXA);
     }
 
     /* Create */
@@ -307,7 +319,7 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     );
     if(!window->handle) {
         UnregisterClassA(window->class.lpszClassName, window->class.hInstance);
-        return GFX_FAILED_TO_CREATE_WINDOW;
+        GFX_RETURN(GFX_FAILED_TO_CREATE_WINDOW);
     }
 
     /* DC */
@@ -315,10 +327,10 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     if(!window->dc) {
     	DestroyWindow(window->handle);
     	UnregisterClassA(window->class.lpszClassName, window->class.hInstance);
-        return GFX_FAILED_TO_GET_DC;
+        GFX_RETURN(GFX_FAILED_TO_GET_DC);
     }
 
-    return GFX_SUCCESS;
+    GFX_RETURN(GFX_SUCCESS);
 }
 
 /* Close the window and free resources. Doesn't guarentee that any of the resources are successfully freed */
@@ -348,16 +360,16 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
     int pixel_format = 0;
     UINT format_count = 0;
     if(!wglChoosePixelFormatARB(window->dc, pixel_attribute_list, 0, request_count, &pixel_format, &format_count)) {
-        return GFX_FAILED_TO_CHOOSE_PIXEL_FORMAT_ARB;
+        GFX_RETURN(GFX_FAILED_TO_CHOOSE_PIXEL_FORMAT_ARB);
     }
 
     PIXELFORMATDESCRIPTOR format_description = { 0 };
     if(!DescribePixelFormat(window->dc, pixel_format, sizeof(PIXELFORMATDESCRIPTOR), &format_description)) {
-        return GFX_FAILED_TO_DESCRIBE_PIXEL_FORMAT;
+        GFX_RETURN(GFX_FAILED_TO_DESCRIBE_PIXEL_FORMAT);
     }
 
     if(!SetPixelFormat(window->dc, pixel_format, &format_description)) {
-        return GFX_FAILED_TO_SET_PIXEL_FORMAT;
+        GFX_RETURN(GFX_FAILED_TO_SET_PIXEL_FORMAT);
     }
 
     /* Create Context */
@@ -640,7 +652,7 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
             context_attribute_list[8] = 0;
         } break;
         default: {
-            return GFX_INVALID_CONTEXT_VERSION; // TODO: Free stuff
+            GFX_RETURN(GFX_INVALID_CONTEXT_VERSION); // TODO: Free stuff
         }
     }
 
@@ -651,32 +663,37 @@ int gfx_create_opengl_context(gfx_window* window, int context_version) {
     just fine on both computers however so idk. */
     window->glrc = wglCreateContextAttribsARB(window->dc, 0, context_attribute_list);
     if(!window->glrc) {
-        return GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB; // TODO: Free resources??
+        GFX_RETURN(GFX_FAILED_TO_CREATE_GL_CONTEXT_ARB); // TODO: Free resources??
     }
 
     if(!wglMakeCurrent(window->dc, window->glrc)) {
-        return GFX_FAILED_TO_MAKE_CONTEXT_CURRENT;
+        GFX_RETURN(GFX_FAILED_TO_MAKE_CONTEXT_CURRENT);
     } printf("Make Context Current: %d\n", GetLastError());
 
-    /* Load OpenGL Procedures */
-    //HINSTANCE openglInstance = GetModuleHandleA("opengl32.lib");
-    //glDebugMessageCallback = (void*)GetProcAddress(openglInstance, "glDebugMessageCallback");
-    //if(!glDebugMessageCallback) {
-    //    printf("Failed to load glDebugmessageCallback\n");
-    //}
-//
-    //// Set up debug logging
-	//int flags;
-	//glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-	//if(flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-	//	//printf("[DEBUG]: Debug context created.\n");
-	//	glEnable(GL_DEBUG_OUTPUT);
-	//	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	//	glDebugMessageCallback(gfx_default_debug_callback, NULL);
-	//	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-	//}
+    // Set up debug logging
+	int flags;
+	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	if(flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+        /* Does this rely on the ARB_debug extension being present? (or others?) Because wglGetProcAddress is
+           described by microsoft as '...returns the address of an OpenGL extension function...'
+           which would imply that glDebugMessageCallback and glDebugMessageControl are coming
+           from an extension, however, according to khronos, debug functionality has been in 
+           opengl core since 4.3... I was unable to use GetProcAddress to find these functions...
+        */
+        /* Load Debug Procedures */
+        glDebugMessageCallback = (void*)wglGetProcAddress("glDebugMessageCallback");
+        glDebugMessageControl =  (void*)wglGetProcAddress("glDebugMessageControl");
+        if(!glDebugMessageCallback || !glDebugMessageControl) {
+            GFX_RETURN(GFX_FAILED_TO_LOAD_GL_DEBUG_PROCS); // TODO: Free resources
+        } else {
+		    glEnable(GL_DEBUG_OUTPUT);
+		    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		    glDebugMessageCallback(gfx_default_debug_callback, NULL);
+		    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+        }
+	}
 
-    return GFX_SUCCESS;
+    GFX_RETURN(GFX_SUCCESS);
 }
 
 /* Process messages in event queue */
@@ -701,9 +718,9 @@ int check_wgl_proc(void* proc) {
 	(proc == (void*)0x2) ||
 	(proc == (void*)0x3) ||
     (proc == (void*)-1)) {
-        return 0;
+        GFX_RETURN(GFX_WGL_PROC_INVALID);
     }
-    return 1;
+    GFX_RETURN(GFX_SUCCESS);
 }
 
 /* Default Debug Callback */
