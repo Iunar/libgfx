@@ -16,6 +16,8 @@
 #define global   static
 
 global int gfx_last_error = GFX_SUCCESS;
+global LARGE_INTEGER gfx_init_time;
+global LARGE_INTEGER gfx_win32_clock_freq;
 
 #define GFX_RETURN(ERR) \
 gfx_last_error = (ERR);\
@@ -41,6 +43,7 @@ GFX_KEY_CALLBACK user_key_callback = NULL;
 GFX_MOUSE_POS_CALLBACK user_mouse_pos_callback = NULL;
 GFX_MOUSE_BUTTON_CALLBACK user_mouse_button_callback = NULL;
 GFX_WINDOW_SIZE_CALLBACK user_window_size_callback = NULL;
+GFX_WINDOW_CLOSE_CALLBACK user_window_close_callback = NULL;
 
 void APIENTRY gfx_default_debug_callback(GLenum source,GLenum type, unsigned int id, GLenum severity,
     GLsizei length, const char *message, const void *userParam);
@@ -54,6 +57,11 @@ LRESULT gfx_def_winproc(
     LRESULT result = 0;
 
     switch(message) {
+        case WM_CLOSE: {
+            if(user_window_close_callback) {
+                user_window_close_callback();
+            }
+        } break;
         case WM_SIZE: {
             if(user_window_size_callback) {
                 UINT width  = LOWORD(lparam);
@@ -220,8 +228,8 @@ int gfx_get_last_error() {
     return gfx_last_error;
 }
 
-/* Load required wgl functions to create a modern opengl context */
-int gfx_load_wgl_extensions() {
+/* Load required wgl functions to create a modern opengl context and start timer */
+int gfx_init() {
     WNDCLASSEXA dummy_class = { 0 };
 
     /* Class */
@@ -338,7 +346,23 @@ int gfx_load_wgl_extensions() {
 
     UnregisterClassA(dummy_class.lpszClassName, dummy_class.hInstance);
 
+    /* Start timer */
+    if(!QueryPerformanceFrequency(&gfx_win32_clock_freq)) {
+        return GFX_FAILED_TO_START_TIMER;
+    }
+
+    if(!QueryPerformanceCounter(&gfx_init_time)) {
+        return GFX_FAILED_TO_START_TIMER;
+    }
+
     GFX_RETURN(GFX_SUCCESS);
+}
+
+/* Get the number of seconds since gfx_init() */
+float gfx_time() {
+    LARGE_INTEGER end;
+    QueryPerformanceCounter(&end); // assuming this doesnt fail.
+    return ((float)(end.QuadPart - gfx_init_time.QuadPart) / gfx_win32_clock_freq.QuadPart);
 }
 
 /* Create window without setting the pixel format */
@@ -355,7 +379,7 @@ int gfx_create_window(gfx_window* window, int width, int height, const char* tit
     window->class.cbWndExtra = 0;
     window->class.hInstance = HINST_LIBGFX;
     window->class.hIcon = 0;
-    window->class.hCursor = 0;
+    window->class.hCursor = LoadCursorA(NULL, IDC_ARROW); // Prevent cursor from being stuck on resizing cursor
     window->class.hbrBackground = 0;
     window->class.lpszMenuName = 0;
     window->class.lpszClassName = "WINDOW0"; // TODO: Change this
@@ -822,6 +846,15 @@ void gfx_set_mouse_button_callback(GFX_MOUSE_BUTTON_CALLBACK mouse_button_callba
 
 void gfx_set_window_size_callback(GFX_WINDOW_SIZE_CALLBACK window_size_callback) {
     user_window_size_callback = window_size_callback;
+}
+
+void gfx_set_window_close_callback(GFX_WINDOW_CLOSE_CALLBACK window_close_callback) {
+    user_window_close_callback = window_close_callback;
+}
+
+// TODO: error checking
+void gfx_swap_buffers(gfx_window window) {
+    SwapBuffers(window.dc);
 }
 
 // TODO: error handling

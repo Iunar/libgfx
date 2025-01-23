@@ -1,3 +1,8 @@
+/*
+    TODO:
+        Option to disable resizing (https://stackoverflow.com/questions/3275989/disable-window-resizing-win32)
+*/
+
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #include <assert.h>
@@ -9,11 +14,14 @@ void key_callback(int key, int state);
 void mouse_pos_callback(double x, double y);
 void mouse_button_callback(int button, double x, double y);
 void window_size_callback(int width, int height);
+void window_close_callback(void) {
+    window.should_close = 1;
+}
 
 #include <stdio.h>
 int main() {
     /* Load wgl extensions */
-    if(gfx_load_wgl_extensions() != GFX_SUCCESS) {
+    if(gfx_init() != GFX_SUCCESS) {
         printf("Failed to load wgl extensions, %d\n", gfx_get_last_error());
         return -1;
     }
@@ -34,6 +42,7 @@ int main() {
     gfx_set_mouse_pos_callback(mouse_pos_callback);
     gfx_set_mouse_button_callback(mouse_button_callback);
     gfx_set_window_size_callback(window_size_callback);
+    gfx_set_window_close_callback(window_close_callback);
 
     /* Triangle */
     float verts[] = {
@@ -80,7 +89,8 @@ int main() {
         glUseProgram(shader);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, (void*)0);
 
-        SwapBuffers(window.dc);
+        //SwapBuffers(window.dc);
+        gfx_swap_buffers(window);
     }
 
     gfx_destroy_window(&window);
@@ -98,6 +108,9 @@ void key_callback(int key, int state) { // why are both the key and state 0 some
 
     if((key == GFX_KEY_Q) && (state == GFX_KEY_DOWN)) {
         window.should_close = 1;
+    }
+    if((key == GFX_KEY_T) && (state == GFX_KEY_DOWN)) {
+        printf("Current time: %.2f\n", gfx_time());
     }
 }
 

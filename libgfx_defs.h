@@ -26,6 +26,7 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define GFX_FAILED_TO_SET_WINDOW_POS          (int)15
 #define GFX_FAILED_TO_GET_WINDOW_INFO         (int)16
 #define GFX_FAILED_TO_ADJUST_WINDOW_RECT      (int)17
+#define GFX_FAILED_TO_START_TIMER             (int)18
 
 /* Input */
 #define GFX_KEY_DOWN (int)0x00

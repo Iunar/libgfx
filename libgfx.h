@@ -24,16 +24,20 @@ typedef struct {
 } gfx_window;
 
 /* Callback function types */
-typedef void (*GFX_KEY_CALLBACK)(int, int);
-typedef void (*GFX_MOUSE_POS_CALLBACK)(double, double);
-typedef void (*GFX_MOUSE_BUTTON_CALLBACK)(int, double, double);
-typedef void (*GFX_WINDOW_SIZE_CALLBACK)(int, int);
+typedef void (*GFX_KEY_CALLBACK)            (int, int);
+typedef void (*GFX_MOUSE_POS_CALLBACK)      (double, double);
+typedef void (*GFX_MOUSE_BUTTON_CALLBACK)   (int, double, double);
+typedef void (*GFX_WINDOW_SIZE_CALLBACK)    (int, int);
+typedef void (*GFX_WINDOW_CLOSE_CALLBACK)   (void);
 
 /* Get the previous error of a gfx_* function. */
 int  gfx_get_last_error();
 
-/* Load opengl windows extensions required to create a real opengl context */
-int  gfx_load_wgl_extensions();
+/* Load opengl windows extensions required to create a real opengl context and starts timer */
+int  gfx_init();
+
+/* Get the number of seconds since gfx_init() */
+float gfx_time();
 
 /* Create win32 window */
 int  gfx_create_window(gfx_window* window, int width, int height, const char* title);
@@ -46,11 +50,15 @@ int  gfx_create_opengl_context(gfx_window* window, int context_version);
 /* Process window message queue */
 void gfx_poll_events(gfx_window window);
 
+/* Swap front and back buffers */
+void gfx_swap_buffers(gfx_window window);
+
 /* Callback setters */
 void gfx_set_key_callback(GFX_KEY_CALLBACK key_callback);
 void gfx_set_mouse_pos_callback(GFX_MOUSE_POS_CALLBACK mouse_pos_callback);
 void gfx_set_mouse_button_callback(GFX_MOUSE_BUTTON_CALLBACK mouse_button_callback);
 void gfx_set_window_size_callback(GFX_WINDOW_SIZE_CALLBACK window_size_callback);
+void gfx_set_window_close_callback(GFX_WINDOW_CLOSE_CALLBACK window_close_callback);
 
 /* Set the size of a gfx_window adjusting for the title bar */
 int gfx_set_window_size(gfx_window* window, int w, int h);
