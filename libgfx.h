@@ -13,7 +13,7 @@
 #include "libgfx_defs.h"
 
 /* Convert a given hex color value to r, g, b, a, float values. Values are normalized as well. */
-#define gfx_hex_to_rgba(H) ( (float)((H >> 24) & 0xFF) / 255.0f ),\
+#define gfx_rgba(H) ( (float)((H >> 24) & 0xFF) / 255.0f ),\
 ( (float)((H >> 16) & 0xFF) / 255.0f ),\
 ( (float)((H >> 8) & 0xFF) / 255.0f ),\
 ( (float)(H & 0xFF) / 255.0f )
